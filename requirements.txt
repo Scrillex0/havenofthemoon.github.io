@@ -1,0 +1,4 @@
+flask
+aiogram
+sqlite3
+python-dotenv
