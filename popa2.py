@@ -8,6 +8,7 @@ import asyncio
 import threading
 from typing import Optional
 from datetime import datetime
+import os
 
 # ===== НАСТРОЙКИ =====
 TOKEN = os.getenv("TOKEN")
