@@ -10,7 +10,7 @@ from typing import Optional
 from datetime import datetime
 
 # ===== НАСТРОЙКИ =====
-TOKEN = "7789596063:AAFuaIEVgj60J4VNHOnvn2xKIDGWcdUrfu0"
+TOKEN = os.getenv("TOKEN")
 ADMIN_IDS = {6367910366, 930359492}
 GROUP_ID = -1002606287455
 DB_FILE = "popa.sqlite"
