@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CandyShop</title>
+    <style>
+        :root {
+            --primary: #3498db;
+            --danger: #e74c3c;
+            --success: #2ecc71;
+            --dark: #2c3e50;
+            --light: #ecf0f1;
+        }
+        
+        body {
+            font-family: 'Arial', sans-serif;
+            background-color: var(--dark);
+            color: white;
+            margin: 0;
+            padding: 0;
+        }
+        
+        .header {
+            background-color: rgba(0, 0, 0, 0.2);
+            padding: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .balance {
+            background-color: var(--primary);
+            padding: 8px 15px;
+            border-radius: 20px;
+            font-weight: bold;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 20px auto;
+            padding: 0 15px;
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 20px;
+        }
+        
+        .item {
+            background-color: #34495e;
+            border-radius: 10px;
+            overflow: hidden;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            transition: transform 0.3s;
+        }
+        
+        .item:hover {
+            transform: translateY(-5px);
+        }
+        
+        .item-img {
+            width: 100%;
+            height: 150px;
+            object-fit: cover;
+            background-color: #7f8c8d;
+        }
+        
+        .item-content {
+            padding: 15px;
+        }
+        
+        .item-title {
+            font-size: 1.2rem;
+            margin: 0 0 10px;
+            color: var(--primary);
+        }
+        
+        .item-descr {
+            font-size: 0.9rem;
+            color: #bdc3c7;
+            margin-bottom: 15px;
+        }
+        
+        .item-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .item-price {
+            font-weight: bold;
+            color: var(--success);
+            font-size: 1.1rem;
+        }
+        
+        .buy-btn {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .buy-btn:hover {
+            background-color: #2980b9;
+        }
+        
+        .buy-btn:disabled {
+            background-color: #7f8c8d;
+            cursor: not-allowed;
+        }
+        
+        /* Модальное окно */
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.7);
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+        }
+        
+        .modal-content {
+            background-color: #34495e;
+            padding: 25px;
+            border-radius: 10px;
+            width: 90%;
+            max-width: 400px;
+            text-align: center;
+        }
+        
+        .modal-title {
+            margin-top: 0;
+            color: var(--primary);
+        }
+        
+        .modal-actions {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .modal-btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+        
+        .confirm-btn {
+            background-color: var(--success);
+            color: white;
+        }
+        
+        .cancel-btn {
+            background-color: var(--danger);
+            color: white;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🍬 CandyShop</h1>
+        <div class="balance" id="balance-display">Загрузка...</div>
+    </div>
+    
+    <div class="container">
+        {% for item in items %}
+        <div class="item">
+            <div class="item-img" style="background-color: hsl({{ loop.index * 100 }}, 50%, 50%);"></div>
+            <div class="item-content">
+                <h3 class="item-title">{{ item.name }}</h3>
+                <p class="item-descr">{{ item.description }}</p>
+                <div class="item-footer">
+                    <span class="item-price">{{ item.price }} 🍬</span>
+                    <button 
+                        class="buy-btn" 
+                        data-item-id="{{ item.id }}"
+                        data-item-price="{{ item.price }}"
+                        onclick="tryBuy({{ item.id }}, {{ item.price }})"
+                    >
+                        Купить
+                    </button>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Модальное окно подтверждения -->
+    <div class="modal" id="confirm-modal">
+        <div class="modal-content">
+            <h3 class="modal-title">Подтвердите покупку</h3>
+            <p id="modal-text">Вы уверены, что хотите купить этот товар?</p>
+            <div class="modal-actions">
+                <button class="modal-btn confirm-btn" id="confirm-btn">Да</button>
+                <button class="modal-btn cancel-btn" id="cancel-btn">Нет</button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Глобальные переменные
+        let currentBalance = 0;
+        let selectedItem = null;
+        
+        // Инициализация
+        document.addEventListener('DOMContentLoaded', () => {
+            checkAuth();
+            updateBalance();
+        });
+        
+        // Проверка авторизации
+        function checkAuth() {
+            const userId = localStorage.getItem('tg_user_id');
+            if (!userId) {
+                const inputId = prompt("Введите ваш Telegram ID (команда /my_id в боте):");
+                if (inputId && inputId.trim()) {
+                    localStorage.setItem('tg_user_id', inputId.trim());
+                    location.reload();
+                } else {
+                    alert("Авторизация обязательна!");
+                    checkAuth();
+                }
+            }
+        }
+        
+        // Обновление баланса
+        async function updateBalance() {
+            const userId = localStorage.getItem('tg_user_id');
+            if (!userId) return;
+            
+            try {
+                const response = await fetch(`/get_balance/${userId}`);
+                const data = await response.json();
+                
+                if (data.status === "success") {
+                    currentBalance = data.balance;
+                    document.getElementById('balance-display').textContent = `🍬 ${currentBalance}`;
+                    
+                    // Обновляем состояние кнопок
+                    document.querySelectorAll('.buy-btn').forEach(btn => {
+                        const price = parseInt(btn.dataset.itemPrice);
+                        btn.disabled = currentBalance < price;
+                    });
+                }
+            } catch (e) {
+                console.error("Ошибка баланса:", e);
+            }
+        }
+        
+        // Попытка покупки
+        function tryBuy(itemId, itemPrice) {
+            const userId = localStorage.getItem('tg_user_id');
+            if (!userId) return checkAuth();
+            
+            if (currentBalance < itemPrice) {
+                alert(`Недостаточно конфет! Нужно: ${itemPrice}, у вас: ${currentBalance}`);
+                return;
+            }
+            
+            selectedItem = { id: itemId, price: itemPrice };
+            document.getElementById('modal-text').textContent = 
+                `Купить товар за ${itemPrice} конфет? Остаток: ${currentBalance - itemPrice}`;
+            document.getElementById('confirm-modal').style.display = 'flex';
+        }
+        
+        // Подтверждение покупки
+        document.getElementById('confirm-btn').addEventListener('click', async () => {
+            const userId = localStorage.getItem('tg_user_id');
+            if (!userId || !selectedItem) return;
+            
+            try {
+                const response = await fetch('/buy', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        user_id: userId,
+                        item_id: selectedItem.id
+                    })
+                });
+                
+                const result = await response.json();
+                
+                if (result.status === "success") {
+                    alert(`✅ ${result.message}\nНовый баланс: ${result.new_balance} конфет`);
+                    await updateBalance();
+                } else {
+                    alert(`❌ ${result.message}`);
+                }
+                
+                document.getElementById('confirm-modal').style.display = 'none';
+            } catch (error) {
+                alert("Ошибка соединения");
+                console.error(error);
+            }
+        });
+        
+        // Отмена покупки
+        document.getElementById('cancel-btn').addEventListener('click', () => {
+            document.getElementById('confirm-modal').style.display = 'none';
+        });
+        
+        // Закрытие модалки при клике вне её
+        window.addEventListener('click', (e) => {
+            if (e.target === document.getElementById('confirm-modal')) {
+                document.getElementById('confirm-modal').style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
